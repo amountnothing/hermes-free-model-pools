@@ -1,0 +1,5 @@
+name: free-nim
+kind: model-provider
+version: 1.0.0
+description: NVIDIA NIM free-endpoint pool fed by free-models-sync (free ids only in the picker)
+author: amountnothing

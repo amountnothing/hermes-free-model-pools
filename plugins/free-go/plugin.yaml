@@ -1,0 +1,5 @@
+name: free-go
+kind: model-provider
+version: 1.0.0
+description: OpenCode Go free-unlimited tier as its own picker group (free ids only)
+author: amountnothing

@@ -1,0 +1,5 @@
+name: free-gemini
+kind: model-provider
+version: 1.0.0
+description: Gemini API free tier as its own picker group (free ids only, OpenAI-compatible endpoint)
+author: amountnothing
