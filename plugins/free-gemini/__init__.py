@@ -26,7 +26,25 @@ def _free_ids() -> tuple:
     )
 
 
-register_provider(ProviderProfile(
+class _FreeGeminiProfile(ProviderProfile):
+    """fetch_models override so the switch validator accepts bare ids.
+
+    Google's OpenAI-compat /models prefixes ids with ``models/`` while the curated free
+    list uses bare ids. Without this override, ``models_validate._profile_catalog`` sees
+    ``fetch_models`` as the base class's method and discards the provider's own catalog,
+    then validates every switch against Google's prefixed live listing — which can never
+    match a bare id (the prefix-strip there only handles ``normalized == "gemini"``).
+    Overriding ``fetch_models`` (even trivially) marks the profile as owning its catalog,
+    so the validator consults ``provider_model_ids()`` → the curated fallback instead.
+    """
+
+    def fetch_models(self, *, api_key=None, base_url=None, timeout=8.0, **kwargs):
+        if not self.supports_model_listing:
+            return None
+        return list(self.fallback_models or ())
+
+
+register_provider(_FreeGeminiProfile(
     supports_model_listing=False,  # live catalog would list paid models too; curated fallback IS the catalog
     name="free-gemini",
     aliases=("free-google",),
