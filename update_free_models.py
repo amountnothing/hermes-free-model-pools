@@ -15,6 +15,7 @@
 import json
 import os
 import re
+import subprocess
 import sys
 import urllib.request
 from datetime import datetime, timezone
@@ -144,6 +145,193 @@ def _atomic_write(text):
     os.replace(tmp, CONFIG)
 
 
+# ---------------------------------------------------------------------------
+# 健康自检 (最简单检查, 不做修复) + 需重启时的智能重启
+# ---------------------------------------------------------------------------
+DASHBOARD_UNIT = "hermes-dashboard.service"
+RESTART_CMD = ["sudo", "-n", "/usr/bin/systemctl", "restart", DASHBOARD_UNIT]
+PENDING = os.path.join(SCRIPTS, "restart_pending")
+BUSY_DIRS = [os.path.join(HERMES, "logs", "agent.log"),  # agent 会话活动信号 (文件)
+             os.path.join(HERMES, "cache", "delegation", "live")]
+BUSY_WINDOW = 600          # 10 分钟内有会话活动 → 视为"任务进行中"
+WATCHER_INTERVAL = 300     # 后台监视器轮询间隔
+WATCHER_MAX_TICKS = 24     # 最长等 2 小时
+FREE_PLUGINS = ("free-nim", "free-go", "free-gemini")
+
+
+def _hermes_install_ws():
+    import glob
+    hits = sorted(glob.glob(os.path.join(HERMES, "installs", "*", "environments", "*", "workspace")))
+    return hits[-1] if hits else None
+
+
+def _newest_mtime(path, suffix=None):
+    newest = 0.0
+    if os.path.isfile(path):
+        newest = os.path.getmtime(path)
+    elif os.path.isdir(path):
+        for root, _dirs, files in os.walk(path):
+            for fn in files:
+                if suffix and not fn.endswith(suffix):
+                    continue
+                try:
+                    newest = max(newest, os.path.getmtime(os.path.join(root, fn)))
+                except OSError:
+                    pass
+    return newest
+
+
+def _dashboard_start_time():
+    try:
+        out = subprocess.run(["systemctl", "show", DASHBOARD_UNIT, "-p", "MainPID", "--value"],
+                             capture_output=True, text=True, timeout=10).stdout.strip()
+        pid = int(out)
+        if pid > 0:
+            return os.stat(f"/proc/{pid}").st_mtime  # /proc/<pid> 目录 mtime ≈ 进程启动时刻
+    except Exception:
+        pass
+    return 0.0
+
+
+def _is_busy():
+    import time
+    now = time.time()
+    for d in BUSY_DIRS:
+        if os.path.isfile(d):
+            try:
+                if now - os.path.getmtime(d) < BUSY_WINDOW:
+                    return True
+            except OSError:
+                pass
+            continue
+        if not os.path.isdir(d):
+            continue
+        for root, _dirs, files in os.walk(d):
+            for fn in files:
+                try:
+                    if now - os.path.getmtime(os.path.join(root, fn)) < BUSY_WINDOW:
+                        return True
+                except OSError:
+                    pass
+    return False
+
+
+def _smoke_test_plugins(allowed_ids):
+    """在全新解释器里验证 free-* 插件目录正确、清单无污染。返回问题列表。"""
+    ws = _hermes_install_ws()
+    if not ws:
+        return ["cannot locate hermes install workspace"]
+    code = (
+        "import json, os, sys\n"
+        "sys.path.insert(0, os.getcwd())\n"
+        "from hermes_cli.models import provider_model_ids\n"
+        f"allowed = set(m['model'] for m in json.load(open({STATE!r}))['models'])\n"
+        "bad = []\n"
+        f"for p in {FREE_PLUGINS!r}:\n"
+        "    ids = provider_model_ids(p)\n"
+        "    if not ids: bad.append(p + ': empty')\n"
+        "    elif not set(ids) <= allowed: bad.append(p + ': pollution ' + str(sorted(set(ids) - allowed)[:3]))\n"
+        "print('OK' if not bad else ';'.join(bad))\n"
+    )
+    try:
+        env = dict(os.environ, PYTHONPATH=ws)
+        r = subprocess.run([sys.executable, "-c", code], cwd=ws, env=env,
+                           capture_output=True, text=True, timeout=120)
+        out = (r.stdout or "").strip().splitlines()
+        line = out[-1] if out else ""
+        if r.returncode == 0 and line == "OK":
+            return []
+        return [f"plugin smoke: {line or r.stderr.strip()[-200:]}"]
+    except Exception as e:
+        return [f"plugin smoke error: {e}"]
+
+
+def _do_restart(reason):
+    try:
+        r = subprocess.run(RESTART_CMD, capture_output=True, text=True, timeout=60)
+        if r.returncode == 0:
+            print(f"[free-models][health] 已自动重启 {DASHBOARD_UNIT} ({reason})")
+            if os.path.exists(PENDING):
+                os.remove(PENDING)
+            return
+        detail = (r.stderr or r.stdout or "").strip().splitlines()
+        print(f"[free-models][health] 重启失败 ({reason}): {detail[-1][:150] if detail else r.returncode}")
+    except Exception as e:
+        print(f"[free-models][health] 重启失败 ({reason}): {e}")
+    with open(PENDING, "w", encoding="utf-8") as f:
+        f.write(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} {reason}\n")
+
+
+def maybe_restart(reason):
+    if _is_busy():
+        print(f"[free-models][health] 检测到进行中的任务 ({reason}), 暂不重启;"
+              f" 已启动后台监视器, 任务静默 {BUSY_WINDOW // 60} 分钟后自动重启")
+        try:
+            subprocess.Popen([sys.executable, os.path.abspath(__file__), "--watch-restart"],
+                             start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"[free-models][health] 监视器启动失败: {e}; 将在下次 cron 重试")
+        return
+    _do_restart(reason)
+
+
+def run_health(changed):
+    """返回问题列表; 需要重启时按策略执行。任何问题都会打印并让 cron 记为失败。"""
+    problems = []
+    # 1. OpenRouter API 可达且返回非空 (fetch 已在 main 完成, 这里看结果)
+    # 2. config 围栏完整
+    try:
+        with open(CONFIG, encoding="utf-8") as f:
+            cfg = f.read()
+        n_begin, n_end = cfg.count(BEGIN), cfg.count(END)
+        if n_begin != 1 or n_end != 1:
+            problems.append(f"config fence broken (begin={n_begin}, end={n_end})")
+    except Exception as e:
+        problems.append(f"config unreadable: {e}")
+    # 3. free_models.json 可解析且非空
+    try:
+        with open(STATE, encoding="utf-8") as f:
+            state = json.load(f)
+        if not state.get("models"):
+            problems.append("free_models.json empty")
+    except Exception as e:
+        problems.append(f"free_models.json unreadable: {e}")
+        state = {"models": []}
+    # 4. 插件目录 + 全新解释器冒烟 (捕获 hermes 代码变更 / 插件退化)
+    for p in FREE_PLUGINS:
+        if not os.path.isdir(os.path.join(HERMES, "plugins", "model-providers", p)):
+            problems.append(f"plugin dir missing: {p}")
+    allowed = {m["model"] for m in state.get("models", [])}
+    problems += _smoke_test_plugins(allowed)
+    # 5. 需要重启的更新 (配置/插件/清单比 dashboard 进程新)
+    start = _dashboard_start_time()
+    watched = [os.path.join(HERMES, "plugins", "model-providers"), STATE, CONFIG, SCRIPTS]
+    newest = max(_newest_mtime(w) for w in watched)
+    stale = start > 0 and newest > start + 5
+    if problems:
+        for p in problems:
+            print(f"[free-models][health] 问题: {p}")
+    if stale:
+        maybe_restart(f"artifacts newer than dashboard start ({datetime.fromtimestamp(newest, timezone.utc).isoformat(timespec='seconds')})")
+    elif os.path.exists(PENDING):
+        maybe_restart("pending restart from previous run")
+    elif changed:
+        print("[free-models][health] 名单已更新, 新会话/重启后生效 (dashboard 进程比产物新, 无需重启)")
+    return problems
+
+
+def watch_restart():
+    import time
+    for _ in range(WATCHER_MAX_TICKS):
+        time.sleep(WATCHER_INTERVAL)
+        if not _is_busy():
+            _do_restart("watcher: tasks finished")
+            return
+    print("[free-models][health] watcher 超时放弃, 留待下次 cron", file=sys.stderr)
+
+
+
 def main():
     or_free = fetch_openrouter_free()
     seed = load_seed()
@@ -171,23 +359,30 @@ def main():
 
     prev_ids = sorted(m["model"] for m in (prev or {}).get("models", []))
     cur_ids = sorted(m["model"] for m in merged)
+    changed = prev_ids != cur_ids
     config_changed = sync_config(render_block(merged))
+    changed = changed or config_changed
 
-    if prev_ids == cur_ids and not config_changed:
-        return  # 无变化 → 静默
+    if changed:
+        added = sorted(set(cur_ids) - set(prev_ids))
+        removed = sorted(set(prev_ids) - set(cur_ids))
+        print(f"[free-models] 免费名单更新 ({len(merged)} 款; OpenRouter {len(or_free)} + 静态 {len(seed)})")
+        for a in added:
+            print(f"  + {a}")
+        for r in removed:
+            print(f"  - {r}")
+        if config_changed:
+            print("  config.yaml model_aliases 块已同步 (备份: config.yaml.bak-free; 需重启会话/面板生效)")
 
-    added = sorted(set(cur_ids) - set(prev_ids))
-    removed = sorted(set(prev_ids) - set(cur_ids))
-    print(f"[free-models] 免费名单更新 ({len(merged)} 款; OpenRouter {len(or_free)} + 静态 {len(seed)})")
-    for a in added:
-        print(f"  + {a}")
-    for r in removed:
-        print(f"  - {r}")
-    if config_changed:
-        print("  config.yaml model_aliases 块已同步 (备份: config.yaml.bak-free; 需重启会话/面板生效)")
+    problems = run_health(changed)
+    if problems:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
+    if "--watch-restart" in sys.argv[1:]:
+        watch_restart()
+        sys.exit(0)
     try:
         main()
     except Exception as e:  # noqa: BLE001
