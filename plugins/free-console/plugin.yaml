@@ -1,5 +1,0 @@
-name: free-console
-kind: model-provider
-version: 1.0.0
-description: OpenCode Console free tier as its own picker group (free ids only)
-author: amountnothing
