@@ -1,21 +1,110 @@
 {
   "_comment": "静态免费源种子（OpenRouter 之外的免费模型），update_free_models.py 会把它与 OpenRouter 实时名单合并。alias=模型选择器里的 free-* 前缀名；provider/base_url/key_env 为 Hermes 别名字段。改完手动跑: python3 ~/.hermes/scripts/update_free_models.py",
   "entries": [
-    {"alias": "free-gemini35-flash", "model": "gemini-3.5-flash", "provider": "gemini", "source": "gemini-free-tier", "note": "AA 50.2 免费层常驻最高分; EEA 不训练"},
-    {"alias": "free-gemini38-flash", "model": "gemini-3.8-flash", "provider": "gemini", "source": "gemini-free-tier", "note": "AA 40.9"},
-    {"alias": "free-gemini35-lite", "model": "gemini-3.5-flash-lite", "provider": "gemini", "source": "gemini-free-tier", "note": "AA 22.2"},
-    {"alias": "free-gemma4-31b", "model": "gemma-4-31b-it", "provider": "gemini", "source": "gemini-free-tier", "note": "AA 14.7"},
-    {"alias": "free-gemma4-26b", "model": "gemma-4-26b-a4b-it", "provider": "gemini", "source": "gemini-free-tier", "note": "AA 16.7"},
-    {"alias": "free-dsv4pro", "model": "deepseek-ai/deepseek-v4-pro", "provider": "nvidia", "source": "nvidia-free-endpoint", "note": "AA 53.2 免费最高分; 40 RPM; 仅限开发测试"},
-    {"alias": "free-dsv4flash", "model": "deepseek-ai/deepseek-v4-flash", "provider": "nvidia", "source": "nvidia-free-endpoint", "note": "AA 34.3"},
-    {"alias": "free-kimi-k3", "model": "moonshotai/kimi-k3", "provider": "nvidia", "source": "nvidia-free-endpoint", "note": "AA 43.6"},
-    {"alias": "free-minimax-m3", "model": "minimaxai/minimax-m3", "provider": "nvidia", "source": "nvidia-free-endpoint", "note": "AA 29.2"},
-    {"alias": "free-nemotron-ultra", "model": "nvidia/nemotron-3-ultra-550b-a55b", "provider": "nvidia", "source": "nvidia-free-endpoint", "note": "AA 22.9; 1M ctx"},
-    {"alias": "free-glm47-flash", "model": "glm-4.7-flash", "provider": "zai", "source": "zai-free", "note": "AA ~11.5; Z.ai 官方 0 元档"},
-    {"alias": "free-glm45-flash", "model": "glm-4.5-flash", "provider": "zai", "source": "zai-free", "note": "Z.ai 官方 0 元档"},
-    {"alias": "free-mimo-flash", "model": "mimo-v2.6-flash-free", "provider": "custom", "base_url": "https://opencode.ai/inference/openai/v1", "key_env": "OPENCODE_API_KEY", "source": "opencode-console-free", "note": "AA 37.9; 200K ctx; 200 req/天; 限时; 数据可能用于训练"},
-    {"alias": "free-longcat25", "model": "longcat-2.5-preview-free", "provider": "opencode-go", "source": "opencode-go-free", "note": "Go 订阅内免费无限档"},
-    {"alias": "free-step5", "model": "step-5-preview-free", "provider": "opencode-go", "source": "opencode-go-free", "note": "AA 43.7; Go 订阅内免费无限档"},
-    {"alias": "free-catjam", "model": "cat-jam-free", "provider": "opencode-go", "source": "opencode-go-free", "note": "Go 订阅内免费无限档; 大陆/港澳台不可用"}
+    {
+      "alias": "free-gemini35-flash",
+      "model": "gemini-3.5-flash",
+      "provider": "gemini",
+      "source": "gemini-free-tier",
+      "note": "AA 50.2 免费层常驻最高分; EEA 不训练"
+    },
+    {
+      "alias": "free-gemini38-flash",
+      "model": "gemini-3.8-flash",
+      "provider": "gemini",
+      "source": "gemini-free-tier",
+      "note": "AA 40.9"
+    },
+    {
+      "alias": "free-gemini35-lite",
+      "model": "gemini-3.5-flash-lite",
+      "provider": "gemini",
+      "source": "gemini-free-tier",
+      "note": "AA 22.2"
+    },
+    {
+      "alias": "free-gemma4-31b",
+      "model": "gemma-4-31b-it",
+      "provider": "gemini",
+      "source": "gemini-free-tier",
+      "note": "AA 14.7"
+    },
+    {
+      "alias": "free-gemma4-26b",
+      "model": "gemma-4-26b-a4b-it",
+      "provider": "gemini",
+      "source": "gemini-free-tier",
+      "note": "AA 16.7"
+    },
+    {
+      "alias": "free-dsv4pro",
+      "model": "deepseek-ai/deepseek-v4-pro",
+      "provider": "nvidia",
+      "source": "nvidia-free-endpoint",
+      "note": "AA 53.2 免费最高分; 40 RPM; 仅限开发测试"
+    },
+    {
+      "alias": "free-dsv4flash",
+      "model": "deepseek-ai/deepseek-v4-flash",
+      "provider": "nvidia",
+      "source": "nvidia-free-endpoint",
+      "note": "AA 34.3"
+    },
+    {
+      "alias": "free-kimi-k3",
+      "model": "moonshotai/kimi-k3",
+      "provider": "nvidia",
+      "source": "nvidia-free-endpoint",
+      "note": "AA 43.6"
+    },
+    {
+      "alias": "free-minimax-m3",
+      "model": "minimaxai/minimax-m3",
+      "provider": "nvidia",
+      "source": "nvidia-free-endpoint",
+      "note": "AA 29.2"
+    },
+    {
+      "alias": "free-nemotron-ultra",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "provider": "nvidia",
+      "source": "nvidia-free-endpoint",
+      "note": "AA 22.9; 1M ctx"
+    },
+    {
+      "alias": "free-glm47-flash",
+      "model": "glm-4.7-flash",
+      "provider": "zai",
+      "source": "zai-free",
+      "note": "AA ~11.5; Z.ai 官方 0 元档"
+    },
+    {
+      "alias": "free-glm45-flash",
+      "model": "glm-4.5-flash",
+      "provider": "zai",
+      "source": "zai-free",
+      "note": "Z.ai 官方 0 元档"
+    },
+    {
+      "alias": "free-longcat25",
+      "model": "longcat-2.5-preview-free",
+      "provider": "opencode-go",
+      "source": "opencode-go-free",
+      "note": "Go 订阅内免费无限档"
+    },
+    {
+      "alias": "free-step5",
+      "model": "step-5-preview-free",
+      "provider": "opencode-go",
+      "source": "opencode-go-free",
+      "note": "AA 43.7; Go 订阅内免费无限档"
+    },
+    {
+      "alias": "free-catjam",
+      "model": "cat-jam-free",
+      "provider": "opencode-go",
+      "source": "opencode-go-free",
+      "note": "Go 订阅内免费无限档; 大陆/港澳台不可用"
+    }
   ]
 }
