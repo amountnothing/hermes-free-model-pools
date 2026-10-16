@@ -13,7 +13,7 @@
     {"alias": "free-nemotron-ultra", "model": "nvidia/nemotron-3-ultra-550b-a55b", "provider": "nvidia", "source": "nvidia-free-endpoint", "note": "AA 22.9; 1M ctx"},
     {"alias": "free-glm47-flash", "model": "glm-4.7-flash", "provider": "zai", "source": "zai-free", "note": "AA ~11.5; Z.ai 官方 0 元档"},
     {"alias": "free-glm45-flash", "model": "glm-4.5-flash", "provider": "zai", "source": "zai-free", "note": "Z.ai 官方 0 元档"},
-    {"alias": "free-mimo-flash", "model": "mimo-v2.6-flash-free", "provider": "custom", "base_url": "https://opencode.ai/inference/v1", "key_env": "OPENCODE_API_KEY", "source": "opencode-console-free", "note": "AA 37.9; 200K ctx; 200 req/天; 限时; 数据可能用于训练"},
+    {"alias": "free-mimo-flash", "model": "mimo-v2.6-flash-free", "provider": "custom", "base_url": "https://opencode.ai/inference/openai/v1", "key_env": "OPENCODE_API_KEY", "source": "opencode-console-free", "note": "AA 37.9; 200K ctx; 200 req/天; 限时; 数据可能用于训练"},
     {"alias": "free-longcat25", "model": "longcat-2.5-preview-free", "provider": "opencode-go", "source": "opencode-go-free", "note": "Go 订阅内免费无限档"},
     {"alias": "free-step5", "model": "step-5-preview-free", "provider": "opencode-go", "source": "opencode-go-free", "note": "AA 43.7; Go 订阅内免费无限档"},
     {"alias": "free-catjam", "model": "cat-jam-free", "provider": "opencode-go", "source": "opencode-go-free", "note": "Go 订阅内免费无限档; 大陆/港澳台不可用"}

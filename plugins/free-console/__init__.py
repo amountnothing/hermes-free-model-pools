@@ -35,6 +35,6 @@ register_provider(ProviderProfile(
     description="OpenCode Console free tier (MiMo V2.6 Flash Free) — synced daily by free-models-sync",
     signup_url="https://opencode.ai/console",
     env_vars=("OPENCODE_API_KEY",),
-    base_url="https://opencode.ai/inference/v1",
+    base_url="https://opencode.ai/inference/openai/v1",
     fallback_models=_free_ids(),
 ))
