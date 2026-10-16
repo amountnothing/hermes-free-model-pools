@@ -24,6 +24,9 @@ _ATTRIBUTION_HEADERS = {
 }
 
 
+_BAD_STATUSES = {"DEAD", "LOCKED", "NOKEY"}
+
+
 def _free_ids() -> tuple:
     try:
         data = json.loads(_STATE.read_text())
@@ -32,6 +35,7 @@ def _free_ids() -> tuple:
     return tuple(
         m["model"] for m in data.get("models", [])
         if m.get("source") == _SOURCE and m.get("model")
+        and m.get("status", "OK") not in _BAD_STATUSES
     )
 
 
