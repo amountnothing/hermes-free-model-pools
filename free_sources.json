@@ -105,6 +105,27 @@
       "provider": "opencode-go",
       "source": "opencode-go-free",
       "note": "Go 订阅内免费无限档; 大陆/港澳台不可用"
+    },
+    {
+      "alias": "free-muse-spark13",
+      "model": "muse-spark-1.3-contributor",
+      "provider": "opencode-go",
+      "source": "opencode-go-free",
+      "note": "Go 免费无限档(Contributor 计划); ⚠️ Contributor 条款: 提示词可能用于训练"
+    },
+    {
+      "alias": "free-muse-spark12",
+      "model": "muse-spark-1.2-contributor",
+      "provider": "opencode-go",
+      "source": "opencode-go-free",
+      "note": "Go 免费无限档(Contributor 计划); ⚠️ Contributor 条款"
+    },
+    {
+      "alias": "free-space-bunny",
+      "model": "space-bunny",
+      "provider": "opencode-go",
+      "source": "opencode-go-free",
+      "note": "Go 免费无限档(客户端显示 Free); 条款未标注"
     }
   ]
 }
